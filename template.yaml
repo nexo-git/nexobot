@@ -1,0 +1,127 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Nexo Chatbot — Lambda + API Gateway + DynamoDB
+
+Parameters:
+  Environment:
+    Type: String
+    Default: development
+    AllowedValues: [development, staging, production]
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+  WhatsAppAccessToken:
+    Type: String
+    NoEcho: true
+  WhatsAppPhoneNumberId:
+    Type: String
+  WhatsAppVerifyToken:
+    Type: String
+    NoEcho: true
+  LogLevel:
+    Type: String
+    Default: INFO
+  OwnerWhatsAppNumber:
+    Type: String
+    Description: "Número del dueño para notificaciones de escalación (formato: 506XXXXXXXX)"
+  AdminToken:
+    Type: String
+    NoEcho: true
+    Description: "Token secreto para el endpoint /admin/handoff"
+  ApiBaseUrl:
+    Type: String
+    Description: "URL base del API Gateway sin /chat (ej: https://xxx.execute-api.us-east-1.amazonaws.com/development)"
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        LOG_LEVEL: !Ref LogLevel
+        DYNAMODB_TABLE_NAME: !Ref ConversationsTable
+        OPENAI_API_KEY: !Ref OpenAIApiKey
+        WHATSAPP_ACCESS_TOKEN: !Ref WhatsAppAccessToken
+        WHATSAPP_PHONE_NUMBER_ID: !Ref WhatsAppPhoneNumberId
+        WHATSAPP_VERIFY_TOKEN: !Ref WhatsAppVerifyToken
+        AWS_REGION_NAME: !Ref AWS::Region
+        OWNER_WHATSAPP_NUMBER: !Ref OwnerWhatsAppNumber
+        ADMIN_TOKEN: !Ref AdminToken
+        API_BASE_URL: !Ref ApiBaseUrl
+
+Resources:
+  ChatbotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "nexobot-${Environment}"
+      CodeUri: .
+      Handler: src/handlers/main.handler
+      Description: Lambda principal del chatbot Nexo Shipping
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationsTable
+      Events:
+        ApiPost:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ChatbotApi
+            Path: /chat
+            Method: POST
+        ApiGet:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ChatbotApi
+            Path: /chat
+            Method: GET
+        AdminHandoff:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ChatbotApi
+            Path: /admin/handoff
+            Method: GET
+
+  ChatbotApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Environment
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - X-Channel
+
+  ConversationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "nexobot-conversations-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
+Outputs:
+  ApiUrl:
+    Description: URL del endpoint del chatbot
+    Value: !Sub "https://${ChatbotApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/chat"
+  FunctionName:
+    Description: Nombre de la Lambda
+    Value: !Ref ChatbotFunction
+  TableName:
+    Description: Nombre de la tabla DynamoDB
+    Value: !Ref ConversationsTable

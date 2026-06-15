@@ -1,0 +1,13 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "nexobot"
+resolve_s3 = true
+s3_prefix = "nexobot"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=\"development\" WhatsAppPhoneNumberId=\"1175305835656830\" LogLevel=\"INFO\""
+image_repositories = []
+
+[default.global.parameters]
+region = "us-east-1"

@@ -1,0 +1,34 @@
+# Credenciales y secretos — NUNCA subir
+.env
+.env.*
+!.env.example
+credCLI.txt
+
+# AWS SAM build artifacts
+.aws-sam/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Claude Code (configuración local de la herramienta)
+.claude/
+
+# IDE
+.vscode/
+.idea/
+*.swp

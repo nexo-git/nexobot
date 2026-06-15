@@ -1,0 +1,909 @@
+\documentclass[12pt,a4paper]{article}
+
+% ---------- Paquetes ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage[margin=2.5cm, top=3cm, bottom=3cm]{geometry}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usepackage{float}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{mdframed}
+\usepackage{lmodern}
+\usepackage[scaled=0.95]{helvet}   % aproxima Inter (sans-serif limpio)
+\usepackage{courier}               % aproxima JetBrains Mono
+\renewcommand{\familydefault}{\sfdefault}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+
+% ---------- Colores de marca nexo ----------
+% Fuente: Nexo Brand Guidelines v1.0
+\definecolor{nexoBlack}{HTML}{0A0E1A}   % Deep Space Black (primario)
+\definecolor{nexoCyan}{HTML}{00D4FF}    % Electric Cyan (acento)
+\definecolor{nexoMidnight}{HTML}{1A2744}% Midnight Blue (secundario)
+\definecolor{nexoGhost}{HTML}{F4F7FC}   % Ghost White (fondos claros)
+\definecolor{nexoSlate}{HTML}{8A95A8}   % Slate Gray (textos secundarios)
+\definecolor{nexoGreen}{HTML}{00E5A0}   % Estado: Entregado
+\definecolor{nexoAmber}{HTML}{FFB800}   % Estado: En tránsito
+\definecolor{nexoRed}{HTML}{FF4D6A}     % Estado: Alerta
+\definecolor{codeBg}{HTML}{F4F7FC}
+
+% ---------- Listings — JetBrains Mono style ----------
+\lstset{
+  backgroundcolor=\color{codeBg},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{nexoCyan!80!black}\bfseries,
+  stringstyle=\color{nexoAmber!80!black},
+  commentstyle=\color{nexoSlate}\itshape,
+  breaklines=true,
+  frame=single,
+  framesep=5pt,
+  rulecolor=\color{nexoSlate!30},
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{nexoSlate},
+  numbersep=8pt,
+  tabsize=4,
+  xleftmargin=1.5em,
+}
+
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,yes,no},
+  keywordstyle=\color{nexoCyan!80!black}\bfseries,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\color{nexoSlate}\itshape,
+  stringstyle=\color{nexoAmber!80!black},
+  morestring=[b]', morestring=[b]",
+}
+
+% ---------- Encabezado / pie de página ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[nexoBlack] (current page.north west)
+      rectangle ([yshift=-1.1cm]current page.north east);
+    \node[anchor=west, text=white, font=\bfseries\small]
+      at ([xshift=2.5cm, yshift=-0.55cm]current page.north west)
+      {\textcolor{nexoCyan}{nexo} \textcolor{nexoSlate}{---}\ Arquitectura Técnica};
+    \node[anchor=east, text=nexoSlate, font=\small]
+      at ([xshift=-2.5cm, yshift=-0.55cm]current page.north east)
+      {Documento Interno · v1.2};
+  \end{tikzpicture}%
+}
+\fancyfoot[C]{\small\textcolor{nexoSlate}{\thepage}}
+
+% ---------- Hyperref ----------
+\hypersetup{
+  colorlinks=true,
+  linkcolor=nexoCyan!60!black,
+  urlcolor=nexoCyan!60!black,
+  pdftitle={Arquitectura Técnica — nexo Chatbot},
+  pdfauthor={nexo Engineering},
+}
+
+% ---------- Estilos TikZ con paleta nexo ----------
+\tikzset{
+  block/.style={
+    rectangle, rounded corners=4pt, minimum width=2.8cm, minimum height=1cm,
+    text centered, draw=nexoMidnight, fill=nexoMidnight!15, font=\small
+  },
+  aws/.style={
+    rectangle, rounded corners=4pt, minimum width=2.8cm, minimum height=1cm,
+    text centered, draw=nexoCyan!70!black, fill=nexoCyan!10, font=\small\bfseries
+  },
+  channel/.style={
+    rectangle, rounded corners=4pt, minimum width=2.5cm, minimum height=1cm,
+    text centered, draw=nexoMidnight, fill=nexoGhost, font=\small
+  },
+  external/.style={
+    ellipse, minimum width=2.5cm, minimum height=0.9cm,
+    text centered, draw=nexoSlate, fill=nexoSlate!10, font=\small
+  },
+  arrow/.style={-{Stealth[length=6pt]}, thick, color=nexoMidnight},
+  cyan_arrow/.style={-{Stealth[length=6pt]}, thick, color=nexoCyan!70!black},
+  dashed_arrow/.style={-{Stealth[length=6pt]}, dashed, thick, color=nexoSlate},
+}
+
+% ---------- Caja destacada (estilo nexo) ----------
+\newmdenv[
+  backgroundcolor=nexoBlack!5,
+  linecolor=nexoCyan,
+  linewidth=2pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=12pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+]{nexobox}
+
+% ==========================================================
+\begin{document}
+
+% ---------- PORTADA ----------
+\begin{titlepage}
+  \pagecolor{nexoBlack}
+  \color{white}
+  \centering
+  \vspace*{3cm}
+
+  % Tagline
+  {\large\textcolor{nexoSlate}\itshape Tu puente entre dos mundos.\par}
+  \vspace{1.2cm}
+
+  % Logo text
+  {\fontsize{52}{56}\selectfont\bfseries
+    \textcolor{white}{ne}\textcolor{nexoCyan}{x}\textcolor{white}{o}\par}
+  \vspace{0.4cm}
+  {\LARGE\bfseries Chatbot — Arquitectura Técnica\par}
+
+  \vspace{1.8cm}
+  % Línea cian (referencia al elemento de destino del logo)
+  \textcolor{nexoCyan}{\rule{0.55\textwidth}{1.5pt}}%
+  \textcolor{nexoCyan}{\large\ $\bullet$}\par
+
+  \vspace{1.5cm}
+  {\large
+    \textcolor{nexoSlate}{Empresa}\quad\textcolor{white}{nexo courier (Costa Rica)} \\[0.5em]
+    \textcolor{nexoSlate}{Sistema}\quad\textcolor{white}{Chatbot multicanal de atención al cliente} \\[0.5em]
+    \textcolor{nexoSlate}{Versión}\quad\textcolor{white}{1.2} \\[0.5em]
+    \textcolor{nexoSlate}{Fecha}\quad\textcolor{white}{Mayo 2026} \\[0.5em]
+    \textcolor{nexoSlate}{Entorno}\quad\textcolor{white}{AWS (us-east-1)}
+  }
+
+  \vfill
+  {\small\textcolor{nexoSlate}{Confidencial — Uso Interno}}
+\end{titlepage}
+
+% Restaurar colores normales después de portada
+\pagecolor{white}
+\color{black}
+
+\tableofcontents
+\newpage
+
+% ==========================================================
+\section{Resumen Ejecutivo}
+
+\begin{nexobox}
+\textbf{nexo bot} es el asistente virtual de atención al cliente de nexo courier.
+Recibe mensajes por WhatsApp y web, los procesa con GPT-4o mini y responde
+en segundos con información precisa del servicio. Sin esperas. Sin corporativismos.
+\end{nexobox}
+
+\vspace{0.5em}
+El sistema conecta a clientes con información sobre precios, tiempos, bodega en Los Ángeles,
+aduana y rastreo de paquetes. Cuando la consulta requiere atención humana (quejas, paquetes
+perdidos, retenciones), el bot escala automáticamente al equipo de nexo.
+
+\subsection{Stack tecnológico}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Componente} & \textbf{Tecnología} & \textbf{Proveedor} \\
+\midrule
+Cómputo (backend) & AWS Lambda (Python 3.12) & Amazon Web Services \\
+API pública & AWS API Gateway HTTP API & Amazon Web Services \\
+Base de datos & AWS DynamoDB (on-demand) & Amazon Web Services \\
+Modelo de IA & GPT-4o mini & OpenAI \\
+Canal de mensajería & WhatsApp Business Cloud API & Meta \\
+IaC / Despliegue & AWS SAM (CloudFormation) & Amazon Web Services \\
+Lenguaje principal & Python 3.12 & -- \\
+\bottomrule
+\end{tabular}
+\caption{Stack tecnológico del sistema}
+\end{table}
+
+% ==========================================================
+\section{Visión General del Sistema}
+
+El diagrama muestra el flujo de alto nivel desde el cliente hasta los servicios externos.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.4cm and 2cm]
+
+  \node[external] (wa_user) {Usuario\\WhatsApp};
+  \node[external, below=0.8cm of wa_user] (web_user) {Usuario\\Web};
+
+  \node[channel, right=2cm of wa_user] (meta) {Meta\\Cloud API};
+
+  \node[aws, right=2.2cm of meta, yshift=-0.5cm] (apigw) {API Gateway\\HTTP API\\POST /chat};
+
+  \node[aws, right=2.2cm of apigw] (lambda) {Lambda\\nexobot\\(Python 3.12)};
+
+  \node[aws, above right=1cm and 1.8cm of lambda] (dynamo) {DynamoDB\\Conversaciones};
+
+  \node[external, below right=1cm and 1.8cm of lambda] (openai) {OpenAI\\GPT-4o mini};
+
+  \draw[arrow] (wa_user) -- node[above, font=\tiny]{mensaje} (meta);
+  \draw[arrow] (meta) -- node[above, font=\tiny]{webhook POST} (apigw);
+  \draw[arrow] (web_user) -- node[below, font=\tiny]{POST /chat} (apigw);
+  \draw[cyan_arrow] (apigw) -- node[above, font=\tiny]{event} (lambda);
+  \draw[arrow] (lambda) -- node[right, font=\tiny]{get/save} (dynamo);
+  \draw[arrow] (lambda) -- node[right, font=\tiny]{chat()} (openai);
+  \draw[dashed_arrow] (lambda) -- node[above, font=\tiny, xshift=-0.3cm]{reply API} (meta);
+  \draw[dashed_arrow] (openai) -- node[left, font=\tiny]{respuesta} (lambda);
+
+\end{tikzpicture}
+\caption{Arquitectura general del sistema}
+\end{figure}
+
+\subsection*{Descripción de componentes}
+
+\begin{description}
+  \item[\textbf{Meta Cloud API}] Intermediario de WhatsApp Business. Recibe mensajes de usuarios y los reenvía como webhooks HTTP POST al endpoint. También recibe las respuestas del bot para entregarlas a los clientes.
+  \item[\textbf{API Gateway HTTP API}] Endpoint público que expone \texttt{POST /chat} y \texttt{GET /chat}. El GET lo usa Meta para verificar el webhook.
+  \item[\textbf{Lambda}] Función principal que orquesta el flujo: parsea el mensaje, recupera historial, consulta OpenAI y persiste los turnos.
+  \item[\textbf{DynamoDB}] Almacena el historial de conversaciones por sesión con TTL de 24 horas.
+  \item[\textbf{OpenAI GPT-4o mini}] Modelo de lenguaje que genera respuestas en base al system prompt de nexo y el historial de la conversación.
+\end{description}
+
+% ==========================================================
+\section{Infraestructura AWS}
+
+El sistema se define y despliega mediante \textbf{AWS SAM} (Serverless Application Model),
+que genera un stack de CloudFormation con todos los recursos.
+
+\subsection{Recursos desplegados}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Recurso SAM} & \textbf{Tipo AWS} & \textbf{Descripción} \\
+\midrule
+\texttt{ChatbotFunction} & \texttt{AWS::Serverless::Function} & Lambda principal \\
+\texttt{ChatbotApi} & \texttt{AWS::Serverless::HttpApi} & API Gateway HTTP API \\
+\texttt{ConversationsTable} & \texttt{AWS::DynamoDB::Table} & Historial de conversaciones \\
+\bottomrule
+\end{tabular}
+\caption{Recursos CloudFormation/SAM}
+\end{table}
+
+\subsubsection*{Rutas expuestas}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Método} & \textbf{Ruta} & \textbf{Función} \\
+\midrule
+POST & \texttt{/chat} & Recepción de mensajes (WhatsApp webhook o web) \\
+GET  & \texttt{/chat} & Verificación del webhook por Meta \\
+GET  & \texttt{/admin/handoff} & Pausa / reanudación del bot por sesión \\
+\bottomrule
+\end{tabular}
+\caption{Rutas del API Gateway}
+\end{table}
+
+\subsection{Configuración de la Lambda}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Runtime & Python 3.12 \\
+Timeout & 30 segundos \\
+Memoria & 256 MB \\
+Handler & \texttt{src/handlers/main.handler} \\
+Política IAM & \texttt{DynamoDBCrudPolicy} (lectura/escritura en tabla) \\
+\bottomrule
+\end{tabular}
+\caption{Configuración de la función Lambda}
+\end{table}
+
+\subsection{Parámetros SAM}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Parámetro} & \textbf{Tipo} & \textbf{Descripción} \\
+\midrule
+\texttt{Environment} & String & \texttt{development} / \texttt{staging} / \texttt{production} \\
+\texttt{OpenAIApiKey} & String (NoEcho) & Clave API de OpenAI \\
+\texttt{WhatsAppAccessToken} & String (NoEcho) & Token Bearer de Meta Cloud API \\
+\texttt{WhatsAppPhoneNumberId} & String & ID del número de teléfono WhatsApp \\
+\texttt{WhatsAppVerifyToken} & String (NoEcho) & Token de verificación del webhook \\
+\texttt{LogLevel} & String & Nivel de log (\texttt{INFO} por defecto) \\
+\texttt{OwnerWhatsAppNumber} & String & Número del dueño para notificaciones (ej: \texttt{506XXXXXXXX}) \\
+\texttt{AdminToken} & String (NoEcho) & Token secreto del endpoint \texttt{/admin/handoff} \\
+\texttt{ApiBaseUrl} & String & URL base del API Gateway (sin \texttt{/chat}) \\
+\bottomrule
+\end{tabular}
+\caption{Parámetros de despliegue SAM}
+\end{table}
+
+\subsection{Variables de entorno inyectadas en Lambda}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Variable} & \textbf{Origen} & \textbf{Uso en código} \\
+\midrule
+\texttt{ENVIRONMENT} & Parámetro SAM & Identificación del entorno \\
+\texttt{LOG\_LEVEL} & Parámetro SAM & Nivel de logging \\
+\texttt{DYNAMODB\_TABLE\_NAME} & Ref tabla SAM & Nombre de la tabla DynamoDB \\
+\texttt{OPENAI\_API\_KEY} & Parámetro SAM & Autenticación con OpenAI \\
+\texttt{WHATSAPP\_ACCESS\_TOKEN} & Parámetro SAM & Token para Meta Cloud API \\
+\texttt{WHATSAPP\_PHONE\_NUMBER\_ID} & Parámetro SAM & ID de número en Meta \\
+\texttt{WHATSAPP\_VERIFY\_TOKEN} & Parámetro SAM & Verificación de webhook \\
+\texttt{AWS\_REGION\_NAME} & \texttt{AWS::Region} & Región para cliente DynamoDB \\
+\texttt{OWNER\_WHATSAPP\_NUMBER} & Parámetro SAM & Número del dueño (notificaciones de escalación) \\
+\texttt{ADMIN\_TOKEN} & Parámetro SAM & Token secreto del endpoint admin \\
+\texttt{API\_BASE\_URL} & Parámetro SAM & URL base para generar links pause/resume \\
+\bottomrule
+\end{tabular}
+\caption{Variables de entorno en la Lambda}
+\end{table}
+
+% ==========================================================
+\section{Flujo de Mensajes}
+
+\subsection{Flujo POST: mensaje de usuario}
+
+Este es el flujo principal. Se activa con cada mensaje enviado por un cliente.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  step/.style={rectangle, rounded corners=3pt, draw=nexoMidnight, fill=nexoGhost,
+    minimum width=8.5cm, minimum height=0.8cm, text width=8.3cm,
+    font=\small, align=left, inner sep=7pt},
+  skip/.style={rectangle, rounded corners=3pt, draw=nexoSlate!50, fill=nexoSlate!8,
+    minimum width=8.5cm, minimum height=0.7cm, text width=8.3cm,
+    font=\small\itshape, align=left, inner sep=7pt},
+  node distance=0.32cm
+]
+  \node[step] (s1) {\textbf{1.} Lambda recibe evento POST de API Gateway};
+  \node[step, below=of s1] (s2) {\textbf{2.} \texttt{\_parse\_body()} extrae el JSON del body};
+  \node[step, below=of s2] (s3) {\textbf{3.} Detección de canal: si el body tiene \texttt{entry} + \texttt{object} → WhatsApp; si no → Web (o header \texttt{X-Channel})};
+  \node[step, below=of s3] (s4) {\textbf{4.} \texttt{channel.parse(body)} → \texttt{NormalizedMessage}};
+  \node[skip, below=of s4] (s4b) {\quad\textit{Si se lanza \texttt{SkipWebhookEvent} (status update de Meta): retorna HTTP 200 de inmediato, sin llamar a OpenAI}};
+  \node[skip, below=of s4b] (s5hm) {\quad\textit{Check \texttt{human\_mode}: si la sesión está pausada por el admin → retorna HTTP 200 \texttt{\{"status":"human\_mode"\}} sin llamar a OpenAI}};
+  \node[step, below=of s5hm] (s5) {\textbf{5.} \texttt{ConversationStore.get\_history(session\_id)} — últimos 10 turnos de DynamoDB (filtrando ítems METADATA)};
+  \node[step, below=of s5] (s6) {\textbf{6.} \texttt{IntentRouter.route()} → llama a OpenAI GPT-4o mini con historial + mensaje};
+  \node[step, below=of s6] (s7) {\textbf{7.} \texttt{ConversationStore.save\_turn()} × 2 (turno usuario + turno asistente)};
+  \node[skip, below=of s7] (s7b) {\quad\textit{Detección de escalación: si la respuesta contiene ``conectarte con un miembro del equipo'' → \texttt{\_notify\_owner()} envía WhatsApp al dueño con links pause/resume}};
+  \node[step, below=of s7b] (s8) {\textbf{8a.} WhatsApp: POST a Meta Cloud API con la respuesta + retorna \texttt{\{"status":"ok"\}}};
+  \node[step, below=of s8] (s9) {\textbf{8b.} Web: retorna HTTP 200 JSON con \texttt{\{"session\_id","reply"\}}};
+
+  \draw[cyan_arrow] (s1) -- (s2);
+  \draw[cyan_arrow] (s2) -- (s3);
+  \draw[cyan_arrow] (s3) -- (s4);
+  \draw[cyan_arrow] (s4) -- (s4b);
+  \draw[cyan_arrow] (s4b) -- (s5hm);
+  \draw[cyan_arrow] (s5hm) -- (s5);
+  \draw[cyan_arrow] (s5) -- (s6);
+  \draw[cyan_arrow] (s6) -- (s7);
+  \draw[cyan_arrow] (s7) -- (s7b);
+  \draw[cyan_arrow] (s7b) -- (s8);
+  \draw[cyan_arrow] (s8) -- (s9);
+\end{tikzpicture}
+\caption{Flujo de procesamiento de un mensaje (POST /chat)}
+\end{figure}
+
+\subsection{Flujo GET: verificación del webhook de WhatsApp}
+
+Meta verifica el webhook con un GET antes de comenzar a enviar eventos.
+El handler responde con el \texttt{hub.challenge} para confirmar la autenticidad del endpoint.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  step/.style={rectangle, rounded corners=3pt, draw=nexoCyan!60!black, fill=nexoCyan!8,
+    minimum width=8.5cm, minimum height=0.8cm, text width=8.3cm,
+    font=\small, align=left, inner sep=7pt},
+  node distance=0.32cm
+]
+  \node[step] (g1) {\textbf{1.} Meta envía GET /chat?hub.mode=subscribe\&hub.verify\_token=\{TOKEN\}\&hub.challenge=\{RAND\}};
+  \node[step, below=of g1] (g2) {\textbf{2.} Lambda detecta método GET, llama \texttt{\_handle\_webhook\_verification()}};
+  \node[step, below=of g2] (g3) {\textbf{3.} Valida: \texttt{hub.mode == "subscribe"} y \texttt{hub.verify\_token == WHATSAPP\_VERIFY\_TOKEN}};
+  \node[step, below=of g3] (g4) {\textbf{4a.} Si válido: retorna HTTP 200 text/plain con el valor de \texttt{hub.challenge}};
+  \node[step, below=of g4] (g5) {\textbf{4b.} Si inválido: retorna HTTP 403 \{"error": "Verificación fallida"\}};
+
+  \draw[arrow] (g1) -- (g2);
+  \draw[arrow] (g2) -- (g3);
+  \draw[arrow] (g3) -- (g4);
+  \draw[arrow] (g4) -- (g5);
+\end{tikzpicture}
+\caption{Flujo de verificación del webhook (GET /chat)}
+\end{figure}
+
+% ==========================================================
+\section{Human Handoff — Escalación y Control Manual}
+
+\begin{nexobox}
+El sistema de \textbf{human handoff} permite al dueño de nexo pausar el bot para una sesión
+específica, atender al cliente manualmente y reanudarlo cuando termine — sin afectar
+ninguna otra conversación en curso.
+\end{nexobox}
+
+\subsection{Flujo completo de escalación}
+
+\begin{enumerate}
+  \item Cliente envía un mensaje que genera escalación (queja, paquete dañado, etc.)
+  \item El bot responde con la frase de escalación y llama a \texttt{\_notify\_owner()}
+  \item El dueño recibe un WhatsApp en \texttt{+506 6071-6066} con el contexto y dos links
+  \item Dueño toca \textbf{Pausar} → Lambda llama \texttt{GET /admin/handoff?action=pause\&session=...\&token=...}
+  \item Bot queda silenciado para esa sesión (DynamoDB \texttt{human\_mode=true})
+  \item Dueño atiende al cliente manualmente desde WhatsApp
+  \item Dueño toca \textbf{Reanudar} → Lambda llama \texttt{GET /admin/handoff?action=resume\&...}
+  \item Bot envía mensaje de cierre al cliente y guarda el turno en historial
+  \item Bot retoma la conversación normalmente
+\end{enumerate}
+
+\subsection{Endpoint /admin/handoff}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Parámetro} & \textbf{Descripción} \\
+\midrule
+\texttt{action} & \texttt{pause} o \texttt{resume} \\
+\texttt{session} & ID de sesión (ej: \texttt{whatsapp\_50688887777}) \\
+\texttt{token} & Token secreto (\texttt{ADMIN\_TOKEN}) \\
+\bottomrule
+\end{tabular}
+\caption{Parámetros del endpoint admin}
+\end{table}
+
+Respuesta: página HTML con confirmación visual del estado (\texttt{⏸️ Bot PAUSADO} / \texttt{▶️ Bot REANUDADO}).
+Si el token es inválido o faltan parámetros, retorna HTTP 403.
+
+Al \textbf{reanudar}, el endpoint adicionalmente:
+\begin{itemize}
+  \item Envía WhatsApp al cliente: \textit{``¡Esperamos haberte ayudado! El asistente virtual de nexo queda de nuevo a tu disposición.''}
+  \item Guarda ese mensaje como turno \texttt{assistant} en DynamoDB, lo que evita que el modelo re-escale en el siguiente mensaje del cliente.
+\end{itemize}
+
+\subsection{Notificación al dueño}
+
+El mensaje WhatsApp enviado al dueño (\texttt{OWNER\_WHATSAPP\_NUMBER}) incluye:
+
+\begin{lstlisting}[language=bash, caption={Formato del mensaje de escalación al dueño}]
+⚠️ *Escalación nexo bot*
+
+👤 *Cliente:* 50688887777
+💬 *Motivo:* "mi paquete llegó completamente dañado"
+
+⏸️ Pausar bot (para atender vos):
+https://<api>/admin/handoff?action=pause&session=whatsapp_50688887777&token=SECRET
+
+▶️ Reanudar bot (cuando terminés):
+https://<api>/admin/handoff?action=resume&session=whatsapp_50688887777&token=SECRET
+\end{lstlisting}
+
+\subsection{Número real de WhatsApp}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Número} & \textbf{Rol} & \textbf{Phone Number ID} \\
+\midrule
++506 6113-2863 & Bot nexo (Cloud API) & \texttt{1096770373519916} \\
++506 6071-6066 & Dueño — recibe notificaciones de escalación & -- \\
+\bottomrule
+\end{tabular}
+\caption{Números del sistema}
+\end{table}
+
+\begin{nexobox}
+El número \texttt{+506 6113-2863} opera \textbf{exclusivamente vía Cloud API} — sin WhatsApp Business App
+en el teléfono. El token de acceso es un \textbf{System User Token permanente} (no vence), generado
+desde Meta Business Manager → Usuarios del Sistema.
+\end{nexobox}
+
+% ==========================================================
+\section{Módulos del Sistema}
+
+\subsection{Estructura de carpetas}
+
+\begin{lstlisting}[language=bash, caption={Estructura del proyecto}]
+nexobot/
+  src/
+    handlers/
+      main.py              # Lambda entry point — orquestador
+    channels/
+      base.py              # Clase abstracta + NormalizedMessage
+      web.py               # Adaptador web chat
+      whatsapp.py          # Adaptador WhatsApp Cloud API
+    ai/
+      router.py            # Enrutador de intents
+      openai_client.py     # Cliente GPT-4o mini
+      gemini_client.py     # Cliente Gemini (no activo)
+    db/
+      dynamo.py            # ConversationStore
+    utils/
+      logger.py            # JSON structured logging
+  tests/
+    test_channels.py
+    test_dynamo.py
+    test_router.py
+  template.yaml            # AWS SAM (IaC)
+  requirements.txt
+  docs/
+    arquitectura.tex       # Este documento
+\end{lstlisting}
+
+\subsection{handlers/main.py — Orquestador Lambda}
+
+Punto de entrada de toda invocación. Contiene lógica de routing de métodos HTTP
+y coordina todos los demás módulos.
+
+\begin{nexobox}
+\textbf{Warm start:} \texttt{ConversationStore} e \texttt{IntentRouter} se instancian a nivel de módulo.
+Lambda reutiliza el mismo proceso entre invocaciones consecutivas, evitando el costo de
+re-inicialización de clientes AWS y OpenAI.
+\end{nexobox}
+
+\begin{lstlisting}[language=Python, caption={Singletons de módulo en main.py}]
+# Instancias reutilizadas entre invocaciones (Lambda warm start)
+_store = ConversationStore()
+_router = IntentRouter()
+\end{lstlisting}
+
+\textbf{Detección de canal:} El sistema identifica el canal en este orden:
+\begin{enumerate}
+  \item Header HTTP \texttt{X-Channel} (prioridad)
+  \item Campo \texttt{channel} en el body JSON
+  \item Estructura del payload: si contiene \texttt{entry} y \texttt{object} → WhatsApp automáticamente
+  \item Default: \texttt{web}
+\end{enumerate}
+
+\subsection{channels/ — Patrón Strategy}
+
+Implementa el \textbf{patrón Strategy} para aislar el parseo y formateo de cada canal.
+Agregar un nuevo canal (Telegram, Slack, SMS) no requiere modificar el handler principal.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.5cm]
+  \node[block] (base) {\texttt{BaseChannel}\\(ABC)\\+ \texttt{parse()}\\+ \texttt{format\_response()}};
+  \node[block, below left=1.5cm and 1.2cm of base] (web) {\texttt{WebChannel}};
+  \node[block, below right=1.5cm and 1.2cm of base] (wa) {\texttt{WhatsAppChannel}};
+
+  \draw[cyan_arrow] (web) -- (base);
+  \draw[cyan_arrow] (wa) -- (base);
+\end{tikzpicture}
+\caption{Jerarquía de clases del módulo channels}
+\end{figure}
+
+\subsubsection*{NormalizedMessage}
+
+Dataclass que representa un mensaje de cualquier canal de forma unificada:
+
+\begin{lstlisting}[language=Python, caption={NormalizedMessage dataclass}]
+@dataclass
+class NormalizedMessage:
+    session_id: str   # "web_u1" o "whatsapp_50688887777"
+    channel: str      # "web" o "whatsapp"
+    user_text: str    # Texto del mensaje del usuario
+    user_id: str      # ID del usuario en ese canal
+    timestamp: str    # ISO 8601
+    raw: dict         # Payload original sin modificar
+\end{lstlisting}
+
+\subsubsection*{SkipWebhookEvent}
+
+Excepción especial que se lanza cuando el webhook de Meta no contiene un mensaje
+de usuario (delivery receipt, read receipt). El handler la captura y retorna
+HTTP 200 sin llamar a OpenAI — limpio en logs.
+
+\subsubsection*{WebChannel}
+
+\begin{lstlisting}[language=Python, caption={Payload esperado por WebChannel}]
+{
+    "user_id":    "u1",
+    "message":    "Cuanto cuesta un envio de 2kg?",
+    "session_id": "web_u1"   # opcional
+}
+# Respuesta: {"session_id": "web_u1", "reply": "..."}
+\end{lstlisting}
+
+\subsubsection*{WhatsAppChannel}
+
+\begin{lstlisting}[language=Python, caption={Extracción del payload de WhatsApp}]
+entry  = raw_payload["entry"][0]
+change = entry["changes"][0]["value"]
+if "messages" not in change:
+    raise SkipWebhookEvent("status update, not a message")
+message = change["messages"][0]
+wa_id   = message["from"]           # numero de telefono
+text    = message["text"]["body"]   # texto del mensaje
+# session_id = f"whatsapp_{wa_id}"
+\end{lstlisting}
+
+La respuesta se envía activamente a Meta mediante \texttt{\_send\_whatsapp\_reply()},
+que hace POST a la API de mensajes de Meta con token Bearer.
+
+\subsection{ai/ — Capa de Inteligencia Artificial}
+
+\subsubsection*{IntentRouter}
+
+Abstrae el modelo de IA subyacente. Actualmente enruta todos los mensajes a OpenAI.
+Diseñada para extenderse con detección de intents y múltiples modelos (Gemini, Claude).
+
+\begin{lstlisting}[language=Python, caption={IntentRouter.route()}]
+def route(self, session_id: str, user_text: str,
+          history: list[dict]) -> str:
+    logger.info("Enviando a OpenAI", extra={"session_id": session_id})
+    return self._openai.chat(history, user_text)
+\end{lstlisting}
+
+\subsubsection*{OpenAIClient}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} & \textbf{Justificación} \\
+\midrule
+Modelo & \texttt{gpt-4o-mini} & Rápido, económico, preciso \\
+Temperatura & 0.4 & Respuestas consistentes, no aleatorias \\
+Max tokens & 512 & Respuestas concisas para chat \\
+\bottomrule
+\end{tabular}
+\caption{Configuración del modelo OpenAI}
+\end{table}
+
+Estructura de mensajes enviados al modelo:
+\[\texttt{[system prompt]} + \texttt{[historial]} + \texttt{[mensaje actual del usuario]}\]
+
+\textbf{Costo estimado:}
+\begin{itemize}
+  \item Precio: \$0.15/1M tokens input — \$0.60/1M tokens output
+  \item Por conversación típica ($\approx$1,200 tokens): $\approx$ \$0.0003 USD
+  \item 10,000 conversaciones/mes $\approx$ \$2--3 USD
+\end{itemize}
+
+\subsubsection*{System Prompt}
+
+Define el comportamiento completo del bot en línea con la \textbf{voz de marca nexo}
+(directo, humano, voseo tico, sin corporativismos). Está organizado en las siguientes secciones:
+
+\begin{description}
+  \item[\texttt{ROL}] Asistente virtual de nexo. Tono cálido, directo, voseo costarricense. Siempre escribe ``nexo'' en negrita (\texttt{*nexo*}).
+  \item[\texttt{PRIMER MENSAJE}] Saludo fijo con menú de opciones (casillero, pedidos, cotizar, asistente de compras, rastreo, Nexo Fiel, cómo funciona).
+  \item[\texttt{SOBRE NEXO}] Datos del servicio: \$14/kg, bodega en Los Ángeles (KEBRA LOGISTICS), 5--8 días hábiles, entrega gratis en Guápiles, consolidación, aduana gestionada.
+  \item[\texttt{PORTAL WEB}] Guía de todas las herramientas en \texttt{https://www.nexocourier.com/}: cotizador, asistente de compras, rastreo, casillero (sin cuenta) y pedidos, dirección CR, cuenta (con cuenta).
+  \item[\texttt{CASILLERO}] Flujo de registro paso a paso en \texttt{/casillero}, luego \texttt{/direccion} y \texttt{/pedidos}.
+  \item[\texttt{CÓMO INGRESAR LA DIRECCIÓN EN TIENDAS USA}] Guía campo por campo (Full Name, Address, City, State, ZIP, Country, Phone). Énfasis en formato \texttt{NOMBRE APELLIDO - NEXO} y país = United States.
+  \item[\texttt{GESTIÓN DE PEDIDOS}] Flujo de alta de pedidos en \texttt{/pedidos} y descripción de todos los estados: En Ruta, En Aduana, Bodega CR · Pagar, Pago · Ruta Local, Entregado.
+  \item[\texttt{DIRECCIÓN DE ENTREGA CR}] Registro de hasta 2 direcciones en \texttt{/direccion} (provincia, cantón, distrito, señas). Requerida antes de agregar pedidos.
+  \item[\texttt{NEXO FIEL}] Programa de lealtad por kg acumulados en bodega CR:
+    \begin{itemize}
+      \item 10 kg → 3\% de descuento
+      \item 25 kg → 5\% de descuento
+      \item 50 kg → 7\% de descuento (ciclo reinicia)
+    \end{itemize}
+    El descuento se aplica automáticamente al pedido que cruza el hito. Visible en \texttt{/pedidos}.
+  \item[\texttt{COTIZADOR}] Dirige al cliente a \texttt{/cotizar} con provincia, tipo de paquete y peso. Base: \$14/kg.
+  \item[\texttt{ASISTENTE DE COMPRAS}] Dirige a \texttt{/asistente}: pegar link de producto → cotización automática por WhatsApp.
+  \item[\texttt{CUÁNDO ESCALAR}] Quejas, paquetes perdidos/dañados, retenciones de aduana, consultas sin información suficiente, solicitud explícita del cliente. Frase canónica de escalación: \textit{``Voy a conectarte con un miembro del equipo de nexo para que te ayude mejor. En breve alguien del equipo se comunicará con vos.''} (no incluye el número del bot para evitar ciclos).
+  \item[\texttt{REGLAS DE COMPORTAMIENTO}] Nunca inventar información, nunca prometer tiempos exactos, nunca revelar datos de otros clientes. Antes de descartar una consulta como fuera de tema, hacer al menos una pregunta de clarificación para entender el sujeto e intención del cliente. Solo si queda claro que no tiene vínculo con nexo, redirigir amablemente. Siempre terminar con oferta de ayuda adicional.
+  \item[\texttt{EJEMPLOS DE RESPUESTA}] 8 ejemplos canónicos: precio, tiempo, bodega, llenar dirección en Amazon, ``ya compré'', rastreo, traer producto de Amazon, Nexo Fiel, estado de pedido.
+\end{description}
+
+\begin{nexobox}
+\textbf{Nota v1.1:} Todas las URLs del system prompt fueron corregidas en mayo 2026 para usar el formato completo \texttt{https://www.nexocourier.com/ruta}. URLs sin protocolo causaban que WhatsApp renderizara el enlace como \texttt{http://}.
+\end{nexobox}
+
+\begin{nexobox}
+\textbf{Nota v1.2:} El mensaje de escalación ya no incluye el número \texttt{+506 6113-2863} como contacto alternativo (causaba un ciclo: el cliente escribía al mismo número del bot). El flujo de human handoff gestiona la atención humana mediante pause/resume.
+\end{nexobox}
+
+\subsection{db/dynamo.py — Almacenamiento de conversaciones}
+
+\subsubsection*{Esquema de la tabla}
+
+La tabla almacena dos tipos de ítems por sesión, diferenciados por el valor de \texttt{sk}:
+
+\subsubsection*{Ítems de historial (turnos de conversación)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Atributo} & \textbf{Tipo} & \textbf{Rol} & \textbf{Descripción} \\
+\midrule
+\texttt{session\_id} & String & HASH (PK) & ID único de sesión \\
+\texttt{sk} & String & RANGE (SK) & \texttt{timestamp\#uuid} (orden cronológico) \\
+\texttt{role} & String & -- & \texttt{"user"} o \texttt{"assistant"} \\
+\texttt{content} & String & -- & Texto del turno \\
+\texttt{expires\_at} & Number & TTL & Unix timestamp (now + 86400s = 24 h) \\
+\bottomrule
+\end{tabular}
+\caption{Ítems de historial en \texttt{nexobot-conversations-\{env\}}}
+\end{table}
+
+\subsubsection*{Ítem de metadata de sesión (human handoff)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Atributo} & \textbf{Tipo} & \textbf{Rol} & \textbf{Descripción} \\
+\midrule
+\texttt{session\_id} & String & HASH (PK) & ID único de sesión \\
+\texttt{sk} & String & RANGE (SK) & Valor fijo: \texttt{"METADATA"} \\
+\texttt{human\_mode} & Boolean & -- & \texttt{true} = bot silenciado; \texttt{false} = activo \\
+\texttt{expires\_at} & Number & TTL & Unix timestamp (now + 604800s = 7 días) \\
+\bottomrule
+\end{tabular}
+\caption{Ítem METADATA por sesión (human handoff)}
+\end{table}
+
+\begin{nexobox}
+El ítem METADATA reutiliza la misma tabla sin cambios de esquema. La sort key \texttt{"METADATA"}
+es lexicográficamente mayor que cualquier timestamp (\texttt{"1..."} $<$ \texttt{"M..."}), por lo que
+\texttt{get\_history()} lo filtra explícitamente descartando ítems sin campo \texttt{role}.
+\end{nexobox}
+
+La sort key \texttt{timestamp\#uuid} de los ítems de historial garantiza unicidad y ordenamiento cronológico.
+
+\subsubsection*{Ejemplo de ítems}
+
+\begin{lstlisting}[language=Python, caption={Items de ejemplo en DynamoDB}]
+# Turno del usuario
+{
+  "session_id": "whatsapp_50688887777",
+  "sk":         "1700000123#a1b2c3d4...",
+  "role":       "user",
+  "content":    "Cuanto cuesta un envio de 2kg?",
+  "expires_at": 1700086523   # +24 horas
+}
+# Turno del asistente
+{
+  "session_id": "whatsapp_50688887777",
+  "sk":         "1700000130#b2c3d4e5...",
+  "role":       "assistant",
+  "content":    "La tarifa es $14/kg, entonces 2 kg = $28.",
+  "expires_at": 1700086530
+}
+\end{lstlisting}
+
+\texttt{get\_history()} consulta con \texttt{ScanIndexForward=False} y \texttt{Limit=10},
+luego invierte la lista para obtener orden cronológico ascendente.
+Los ítems sin campo \texttt{role} (como METADATA) son filtrados antes de construir el historial.
+
+\subsubsection*{Métodos de ConversationStore}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lp{9cm}@{}}
+\toprule
+\textbf{Método} & \textbf{Descripción} \\
+\midrule
+\texttt{get\_history(session\_id)} & Últimos 10 turnos en orden cronológico. Filtra ítems sin \texttt{role}. \\
+\texttt{save\_turn(session\_id, role, content)} & Persiste un turno con TTL de 24 h. \\
+\texttt{get\_human\_mode(session\_id)} & Lee el flag \texttt{human\_mode} del ítem METADATA. Retorna \texttt{False} si no existe. \\
+\texttt{set\_human\_mode(session\_id, human\_mode)} & Escribe el ítem METADATA con el nuevo valor y TTL de 7 días. \\
+\bottomrule
+\end{tabular}
+\caption{Métodos de ConversationStore}
+\end{table}
+
+\subsection{utils/logger.py — Logging estructurado}
+
+JSON logging con campos contextuales, compatible con CloudWatch Logs Insights:
+
+\begin{lstlisting}[language=Python, caption={Ejemplo de log en produccion}]
+{"level": "INFO", "message": "Mensaje recibido",
+ "logger": "src.handlers.main",
+ "session_id": "whatsapp_50688887777", "channel": "whatsapp"}
+
+{"level": "INFO", "message": "OpenAI respondio",
+ "logger": "src.ai.openai_client", "tokens": 847}
+\end{lstlisting}
+
+% ==========================================================
+\section{Despliegue}
+
+\begin{lstlisting}[language=bash, caption={Comandos de despliegue}]
+# Primera vez (interactivo, genera samconfig.toml)
+sam build && sam deploy --guided
+
+# Despliegues subsiguientes
+sam build && sam deploy
+
+# Monitoreo de logs en tiempo real
+aws logs tail /aws/lambda/nexobot-development --follow
+\end{lstlisting}
+
+La URL del endpoint se obtiene de los Outputs de CloudFormation:
+\begin{lstlisting}[language=bash]
+# Endpoint activo (development)
+https://2z6y41jisg.execute-api.us-east-1.amazonaws.com/development/chat
+\end{lstlisting}
+
+% ==========================================================
+\section{Limitaciones y Mejoras Futuras}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}p{4.8cm}p{8cm}@{}}
+\toprule
+\textbf{Limitación} & \textbf{Mejora recomendada} \\
+\midrule
+Sin rate limiting & Throttling en API Gateway (burst limit por IP) \\
+Endpoint web sin autenticación & API Key en API Gateway para el canal web \\
+Historial máximo 10 turnos & Aumentar \texttt{MAX\_HISTORY\_TURNS} o resumir historial largo \\
+Sin fallback si OpenAI falla & Mensaje de error amigable + retry con backoff exponencial \\
+Gemini no integrado & Activar \texttt{GeminiClient} en \texttt{IntentRouter} para casos complejos \\
+Sin alertas de costo & Configurar AWS Budgets + OpenAI usage alerts \\
+Sin inbox de conversaciones & Dashboard admin con historial DynamoDB o integración Respond.io \\
+Perfil WhatsApp: nombre ``nexoreal'' & Cambiar a ``nexo'' o ``nexo courier'' en WhatsApp Manager \\
+\midrule
+\multicolumn{2}{@{}l}{\textcolor{nexoGreen}{\textbf{✓ Resuelto en v1.1}}} \\
+URLs sin protocolo HTTPS & Corregido: todas las URLs usan \texttt{https://www.nexocourier.com/} \\
+\midrule
+\multicolumn{2}{@{}l}{\textcolor{nexoGreen}{\textbf{✓ Resuelto en v1.2}}} \\
+Token WhatsApp temporal & System User Token permanente (Meta Business Manager) \\
+App Meta en modo desarrollo & App publicada en modo Producción \\
+Re-escalación post-resume & Historial sellado con mensaje de cierre al reanudar \\
+METADATA en historial & Filtrado por campo \texttt{role} en \texttt{get\_history()} \\
+\bottomrule
+\end{tabular}
+\caption{Limitaciones actuales y mejoras recomendadas}
+\end{table}
+
+% ==========================================================
+\section*{Glosario}
+
+\begin{description}
+  \item[\textbf{AWS SAM}] Serverless Application Model. Framework de IaC que extiende CloudFormation para recursos serverless.
+  \item[\textbf{Lambda warm start}] Reutilización de la instancia Lambda entre invocaciones, evitando el tiempo de inicialización de módulos.
+  \item[\textbf{TTL (DynamoDB)}] Time To Live. Permite a DynamoDB eliminar ítems automáticamente después de una fecha Unix.
+  \item[\textbf{Webhook}] Callback HTTP. Meta envía un POST al endpoint del sistema cada vez que un usuario envía un mensaje.
+  \item[\textbf{SkipWebhookEvent}] Excepción interna que señala que el evento de Meta no es un mensaje de usuario (delivery/read receipt).
+  \item[\textbf{System Prompt}] Instrucción inicial al modelo de IA que define su rol, conocimiento y comportamiento.
+  \item[\textbf{Sort Key (SK)}] Clave de ordenamiento en DynamoDB. Formato \texttt{timestamp\#uuid} garantiza unicidad y orden cronológico.
+  \item[\textbf{Voseo}] Forma pronominal del español costarricense: ``vos'', ``tenés'', ``podés''. Parte de la voz de marca nexo.
+  \item[\textbf{Human Handoff}] Mecanismo que silencia el bot para una sesión específica mientras el dueño atiende manualmente al cliente. Controlado por el flag \texttt{human\_mode} en DynamoDB.
+  \item[\textbf{System User Token}] Token de acceso permanente de Meta, generado desde Meta Business Manager → Usuarios del Sistema. No tiene fecha de vencimiento, a diferencia de los tokens temporales de la API Setup (~60 días).
+  \item[\textbf{Cloud API}] WhatsApp Business Cloud API. Modalidad de integración donde Meta gestiona la infraestructura. Incompatible con WhatsApp Business App en el mismo número.
+  \item[\textbf{METADATA item}] Ítem especial en DynamoDB con \texttt{sk="METADATA"} que almacena el estado de sesión (human\_mode). Reutiliza la misma tabla sin cambios de esquema.
+\end{description}
+
+\vfill
+\begin{center}
+  \begin{tikzpicture}
+    \fill[nexoBlack] (0,0) rectangle (\textwidth, 0.8cm);
+    \node[anchor=west, text=nexoSlate, font=\small]
+      at (0.3cm, 0.4cm) {nexo courier — Confidencial — Uso Interno — v1.2};
+    \node[anchor=east, text=nexoCyan, font=\small\itshape]
+      at (\textwidth-0.3cm, 0.4cm) {Tu puente entre dos mundos.};
+  \end{tikzpicture}
+\end{center}
+
+% ---------- Historial de versiones ----------
+\section*{Historial de versiones}
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Versión} & \textbf{Fecha} & \textbf{Cambios} \\
+\midrule
+1.0 & Abril 2026 & Documento inicial \\
+1.1 & Mayo 2026 & System prompt expandido (Nexo Fiel, portal web, reglas); URLs corregidas a \texttt{https://}; URL real del endpoint \\
+1.2 & Mayo 2026 & Human handoff completo (pause/resume, notificación al dueño, mensaje de cierre); número real \texttt{+506 6113-2863} con System User Token permanente; app Meta publicada; fix METADATA en historial; fix re-escalación post-resume; clarificación antes de descartar consultas \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}
