@@ -32,3 +32,7 @@ htmlcov/
 .vscode/
 .idea/
 *.swp
+
+# Analytics Lambda — dependencias instaladas y zip de deploy
+analytics/conversation_analyzer/package/
+analytics/conversation_analyzer/conversation_analyzer.zip

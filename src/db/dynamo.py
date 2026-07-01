@@ -36,7 +36,7 @@ class ConversationStore:
 
     def save_turn(self, session_id: str, role: str, content: str) -> None:
         """Persiste un turno de conversación con TTL de 24 h."""
-        now = int(time.time())
+        now = int(time.time() * 1000)  # milisegundos para orden correcto dentro del mismo segundo
         sk = f"{now}#{uuid.uuid4().hex}"
         self._table.put_item(
             Item={
@@ -70,3 +70,65 @@ class ConversationStore:
             "human_mode actualizado",
             extra={"session_id": session_id, "human_mode": human_mode},
         )
+
+    def list_all_sessions(self) -> list[dict]:
+        """Retorna todas las sesiones activas con su último mensaje y estado human_mode."""
+        response = self._table.scan()
+        items: list[dict[str, Any]] = response.get("Items", [])
+
+        sessions: dict[str, dict] = {}
+        for item in items:
+            sid = item["session_id"]
+            if sid not in sessions:
+                sessions[sid] = {"human_mode": False, "turns": []}
+
+            if item.get("sk") == "METADATA":
+                sessions[sid]["human_mode"] = item.get("human_mode", False)
+            elif "role" in item:
+                sessions[sid]["turns"].append(item)
+
+        result = []
+        for sid, data in sessions.items():
+            turns = data["turns"]
+            if not turns:
+                continue
+            turns.sort(key=lambda x: x["sk"], reverse=True)
+            latest = turns[0]
+            try:
+                last_activity = int(latest["sk"].split("#")[0])
+            except (ValueError, IndexError):
+                last_activity = 0
+            result.append({
+                "session_id": sid,
+                "phone_number": sid.removeprefix("whatsapp_"),
+                "human_mode": data["human_mode"],
+                "last_message": latest.get("content", ""),
+                "last_message_role": latest.get("role", "user"),
+                "last_activity": last_activity,
+            })
+
+        result.sort(key=lambda x: x["last_activity"], reverse=True)
+        return result
+
+    def get_full_history(self, session_id: str) -> list[dict]:
+        """Retorna todos los turnos de una sesión con timestamps, sin límite."""
+        response = self._table.query(
+            KeyConditionExpression=Key("session_id").eq(session_id),
+            ScanIndexForward=True,
+        )
+        items: list[dict[str, Any]] = response.get("Items", [])
+        result = []
+        for item in items:
+            if "role" not in item:
+                continue
+            try:
+                timestamp = int(item["sk"].split("#")[0])
+            except (ValueError, IndexError):
+                timestamp = 0
+            result.append({
+                "sk": item["sk"],
+                "role": item["role"],
+                "content": item.get("content", ""),
+                "timestamp": timestamp,
+            })
+        return result

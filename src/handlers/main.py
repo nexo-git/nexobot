@@ -130,6 +130,50 @@ def _notify_owner(session_id: str, client_number: str, last_message: str) -> Non
     _send_whatsapp_reply(_OWNER_NUMBER, text)
 
 
+def _handle_admin_conversations(event: dict[str, Any]) -> dict[str, Any]:
+    """Endpoint GET /admin/conversations[/{session_id}] — lista o detalla conversaciones."""
+    params = event.get("queryStringParameters") or {}
+    token  = params.get("token", "")
+
+    if not _ADMIN_TOKEN or token != _ADMIN_TOKEN:
+        return {"statusCode": 403, "headers": {"Content-Type": "application/json"}, "body": '{"error":"Acceso denegado"}'}
+
+    raw_path = event.get("rawPath", "")
+    parts = raw_path.rstrip("/").split("/")
+    session_id = parts[-1] if parts[-1] != "conversations" else None
+
+    if session_id:
+        messages  = _store.get_full_history(session_id)
+        human_mode = _store.get_human_mode(session_id)
+        return _ok({"session_id": session_id, "human_mode": human_mode, "messages": messages})
+
+    conversations = _store.list_all_sessions()
+    return _ok({"conversations": conversations})
+
+
+def _handle_admin_reply(event: dict[str, Any]) -> dict[str, Any]:
+    """Endpoint POST /admin/reply — envía un mensaje como el negocio al cliente."""
+    headers = event.get("headers") or {}
+    auth    = headers.get("authorization") or headers.get("Authorization") or ""
+    token   = auth.removeprefix("Bearer ").strip()
+
+    if not _ADMIN_TOKEN or token != _ADMIN_TOKEN:
+        return {"statusCode": 403, "headers": {"Content-Type": "application/json"}, "body": '{"error":"Acceso denegado"}'}
+
+    body = _parse_body(event)
+    session_id = body.get("session_id", "")
+    message    = body.get("message", "").strip()
+
+    if not session_id or not message:
+        return _error("session_id y message son requeridos", 400)
+
+    phone_number = session_id.removeprefix("whatsapp_")
+    _send_whatsapp_reply(phone_number, message)
+    _store.save_turn(session_id, "assistant", message)
+
+    return _ok({"ok": True})
+
+
 def _handle_admin_handoff(event: dict[str, Any]) -> dict[str, Any]:
     """Endpoint GET /admin/handoff — pausa o reanuda el bot para una sesión específica."""
     params = event.get("queryStringParameters") or {}
@@ -180,6 +224,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     method   = event.get("requestContext", {}).get("http", {}).get("method", "POST")
     raw_path = event.get("rawPath", "")
 
+    if "/admin/conversations" in raw_path:
+        return _handle_admin_conversations(event)
+    if raw_path.endswith("/admin/reply") and method == "POST":
+        return _handle_admin_reply(event)
     if raw_path.endswith("/admin/handoff"):
         return _handle_admin_handoff(event)
 
@@ -212,7 +260,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Si la sesión está en modo humano, el bot se mantiene silencioso
         if _store.get_human_mode(msg.session_id):
-            logger.info("Sesión en modo humano, ignorando", extra={"session_id": msg.session_id})
+            logger.info("Sesión en modo humano, guardando turno", extra={"session_id": msg.session_id})
+            _store.save_turn(msg.session_id, "user", msg.user_text)
             return _ok({"status": "human_mode"})
 
         history = _store.get_history(msg.session_id)

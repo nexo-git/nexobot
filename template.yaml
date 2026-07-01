@@ -81,6 +81,24 @@ Resources:
             ApiId: !Ref ChatbotApi
             Path: /admin/handoff
             Method: GET
+        AdminConversations:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ChatbotApi
+            Path: /admin/conversations
+            Method: GET
+        AdminConversationDetail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ChatbotApi
+            Path: /admin/conversations/{session_id}
+            Method: GET
+        AdminReply:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ChatbotApi
+            Path: /admin/reply
+            Method: POST
 
   ChatbotApi:
     Type: AWS::Serverless::HttpApi
@@ -90,11 +108,13 @@ Resources:
         AllowOrigins:
           - "*"
         AllowMethods:
+          - GET
           - POST
           - OPTIONS
         AllowHeaders:
           - Content-Type
           - X-Channel
+          - Authorization
 
   ConversationsTable:
     Type: AWS::DynamoDB::Table
