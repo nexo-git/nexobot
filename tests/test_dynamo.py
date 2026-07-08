@@ -42,3 +42,33 @@ def test_save_turn_calls_put_item(mock_boto3):
     assert call_args["role"] == "user"
     assert call_args["content"] == "Hola"
     assert "expires_at" in call_args
+
+
+@patch("src.db.dynamo.boto3")
+def test_escalation_cooldown_defaults_to_zero(mock_boto3):
+    from src.db.dynamo import ConversationStore
+
+    mock_table = MagicMock()
+    mock_table.get_item.return_value = {"Item": {}}
+    mock_boto3.resource.return_value.Table.return_value = mock_table
+
+    with patch.dict("os.environ", {"DYNAMODB_TABLE_NAME": "test-table", "AWS_REGION": "us-east-1"}):
+        store = ConversationStore()
+        assert store.get_last_escalation_at("ses1") == 0
+
+
+@patch("src.db.dynamo.boto3")
+def test_set_last_escalation_at_calls_update_item(mock_boto3):
+    from src.db.dynamo import ConversationStore
+
+    mock_table = MagicMock()
+    mock_boto3.resource.return_value.Table.return_value = mock_table
+
+    with patch.dict("os.environ", {"DYNAMODB_TABLE_NAME": "test-table", "AWS_REGION": "us-east-1"}):
+        store = ConversationStore()
+        store.set_last_escalation_at("ses1", 1700000000)
+
+    mock_table.update_item.assert_called_once()
+    call_kwargs = mock_table.update_item.call_args[1]
+    assert call_kwargs["Key"] == {"session_id": "ses1", "sk": "METADATA"}
+    assert call_kwargs["ExpressionAttributeValues"][":t"] == 1700000000

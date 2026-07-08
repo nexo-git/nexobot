@@ -14,6 +14,7 @@ class NormalizedMessage:
     user_text: str
     user_id: str
     timestamp: str
+    message_type: str = "text"
     raw: dict[str, Any] = field(default_factory=dict)
 
 

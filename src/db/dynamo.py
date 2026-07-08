@@ -58,17 +58,33 @@ class ConversationStore:
 
     def set_human_mode(self, session_id: str, human_mode: bool) -> None:
         """Activa o desactiva el modo humano para una sesión específica."""
-        self._table.put_item(
-            Item={
-                "session_id": session_id,
-                "sk": "METADATA",
-                "human_mode": human_mode,
-                "expires_at": int(time.time()) + _METADATA_TTL,
-            }
+        self._table.update_item(
+            Key={"session_id": session_id, "sk": "METADATA"},
+            UpdateExpression="SET human_mode = :h, expires_at = :e",
+            ExpressionAttributeValues={
+                ":h": human_mode,
+                ":e": int(time.time()) + _METADATA_TTL,
+            },
         )
         logger.info(
             "human_mode actualizado",
             extra={"session_id": session_id, "human_mode": human_mode},
+        )
+
+    def get_last_escalation_at(self, session_id: str) -> int:
+        """Retorna el timestamp (epoch, segundos) de la última notificación de escalación enviada al dueño."""
+        response = self._table.get_item(Key={"session_id": session_id, "sk": "METADATA"})
+        return int(response.get("Item", {}).get("last_escalation_at", 0))
+
+    def set_last_escalation_at(self, session_id: str, timestamp: int) -> None:
+        """Registra cuándo se notificó al dueño por última vez por escalación en esta sesión."""
+        self._table.update_item(
+            Key={"session_id": session_id, "sk": "METADATA"},
+            UpdateExpression="SET last_escalation_at = :t, expires_at = :e",
+            ExpressionAttributeValues={
+                ":t": timestamp,
+                ":e": timestamp + _METADATA_TTL,
+            },
         )
 
     def list_all_sessions(self) -> list[dict]:

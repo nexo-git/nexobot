@@ -22,6 +22,7 @@ class WhatsAppChannel(BaseChannel):
                 raise SkipWebhookEvent("status update, not a message")
             message = change["messages"][0]
             wa_id: str = message["from"]
+            message_type: str = message.get("type", "text")
             text: str = message.get("text", {}).get("body", "").strip()
             ts = message.get("timestamp", "")
         except SkipWebhookEvent:
@@ -36,6 +37,7 @@ class WhatsAppChannel(BaseChannel):
             user_text=text,
             user_id=wa_id,
             timestamp=ts or datetime.now(timezone.utc).isoformat(),
+            message_type=message_type,
             raw=raw_payload,
         )
 

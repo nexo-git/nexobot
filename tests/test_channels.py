@@ -49,6 +49,27 @@ class TestWhatsAppChannel:
         assert msg.channel == "whatsapp"
         assert msg.session_id == "whatsapp_50688887777"
         assert msg.user_text == "¿Cuánto cuesta un envío?"
+        assert msg.message_type == "text"
+
+    def test_parse_audio_message(self):
+        ch = WhatsAppChannel()
+        payload = {
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "messages": [{
+                            "from": "50688887777",
+                            "type": "audio",
+                            "audio": {"id": "media123", "mime_type": "audio/ogg; codecs=opus"},
+                            "timestamp": "1700000000",
+                        }]
+                    }
+                }]
+            }]
+        }
+        msg = ch.parse(payload)
+        assert msg.message_type == "audio"
+        assert msg.user_text == ""
 
     def test_parse_invalid_raises(self):
         ch = WhatsAppChannel()

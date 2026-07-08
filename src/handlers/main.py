@@ -14,6 +14,7 @@ Flujo GET (webhook WhatsApp):
 
 import json
 import os
+import time
 from typing import Any
 
 import requests
@@ -47,6 +48,16 @@ _ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 _API_BASE_URL = os.environ.get("API_BASE_URL", "")
 
 _ESCALATION_MARKER = "[ESCALAR]"
+_ESCALATION_COOLDOWN_SECONDS = 15 * 60  # no re-notificar al dueño más de 1 vez cada 15 min por sesión
+
+_MEDIA_FALLBACK_MESSAGES = {
+    "audio": "Por ahora no puedo escuchar audios 🎤 ¿Me escribís tu consulta en texto? Así te ayudo más rápido.",
+    "image": "Recibí tu imagen, pero por ahora no puedo verla 🖼️ ¿Podés contármelo en texto, o si es un producto que querés traer, pasame el link?",
+    "video": "Recibí tu video, pero por ahora no puedo verlo 🎥 ¿Podés contármelo en texto?",
+    "document": "Recibí tu archivo, pero por ahora no puedo abrirlo 📄 ¿Podés contarme en texto de qué se trata?",
+    "sticker": "¡Me encantan los stickers! 😄 Pero para ayudarte necesito que me escribas tu consulta en texto.",
+}
+_DEFAULT_MEDIA_FALLBACK = "Por ahora solo puedo leer mensajes de texto 🙏 ¿Me contás tu consulta escrita?"
 
 
 def _detect_channel(event: dict[str, Any]) -> str:
@@ -264,6 +275,21 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             _store.save_turn(msg.session_id, "user", msg.user_text)
             return _ok({"status": "human_mode"})
 
+        # Audio, imágenes, video, etc. no se pueden procesar todavía — responder con fallback fijo
+        if msg.message_type != "text":
+            logger.info(
+                "Mensaje multimedia no soportado",
+                extra={"session_id": msg.session_id, "message_type": msg.message_type},
+            )
+            reply = _MEDIA_FALLBACK_MESSAGES.get(msg.message_type, _DEFAULT_MEDIA_FALLBACK)
+            _store.save_turn(msg.session_id, "user", f"[mensaje de tipo: {msg.message_type}]")
+            _store.save_turn(msg.session_id, "assistant", reply)
+
+            if channel_name == "whatsapp":
+                _send_whatsapp_reply(msg.user_id, reply)
+                return _ok({"status": "ok"})
+            return _ok(channel.format_response(reply, msg.session_id))
+
         history = _store.get_history(msg.session_id)
         reply = _router.route(msg.session_id, msg.user_text, history)
 
@@ -277,7 +303,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         _store.save_turn(msg.session_id, "assistant", reply)
 
         if needs_escalation:
-            _notify_owner(msg.session_id, msg.user_id, msg.user_text)
+            now = int(time.time())
+            last_escalation_at = _store.get_last_escalation_at(msg.session_id)
+            if now - last_escalation_at >= _ESCALATION_COOLDOWN_SECONDS:
+                _notify_owner(msg.session_id, msg.user_id, msg.user_text)
+                _store.set_last_escalation_at(msg.session_id, now)
+            else:
+                logger.info(
+                    "Escalación en cooldown, no se notifica al dueño de nuevo",
+                    extra={"session_id": msg.session_id},
+                )
 
         # WhatsApp requiere enviar la respuesta activamente via API
         if channel_name == "whatsapp":
