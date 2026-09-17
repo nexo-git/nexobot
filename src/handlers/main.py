@@ -272,7 +272,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Si la sesión está en modo humano, el bot se mantiene silencioso
         if _store.get_human_mode(msg.session_id):
             logger.info("Sesión en modo humano, guardando turno", extra={"session_id": msg.session_id})
-            _store.save_turn(msg.session_id, "user", msg.user_text)
+            _store.save_turn(msg.session_id, "user", msg.user_text, msg.event_ts_ms)
             return _ok({"status": "human_mode"})
 
         # Audio, imágenes, video, etc. no se pueden procesar todavía — responder con fallback fijo
@@ -282,7 +282,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 extra={"session_id": msg.session_id, "message_type": msg.message_type},
             )
             reply = _MEDIA_FALLBACK_MESSAGES.get(msg.message_type, _DEFAULT_MEDIA_FALLBACK)
-            _store.save_turn(msg.session_id, "user", f"[mensaje de tipo: {msg.message_type}]")
+            _store.save_turn(msg.session_id, "user", f"[mensaje de tipo: {msg.message_type}]", msg.event_ts_ms)
             _store.save_turn(msg.session_id, "assistant", reply)
 
             if channel_name == "whatsapp":
@@ -299,7 +299,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             reply = reply[len(_ESCALATION_MARKER):].lstrip()
             logger.info("Escalación detectada", extra={"session_id": msg.session_id})
 
-        _store.save_turn(msg.session_id, "user", msg.user_text)
+        _store.save_turn(msg.session_id, "user", msg.user_text, msg.event_ts_ms)
         _store.save_turn(msg.session_id, "assistant", reply)
 
         if needs_escalation:

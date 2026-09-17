@@ -1,10 +1,22 @@
-from datetime import datetime, timezone
+import time
 from typing import Any
 
 from src.channels.base import BaseChannel, NormalizedMessage, SkipWebhookEvent
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _parse_event_ts_ms(raw_ts: str) -> int:
+    """Meta manda el timestamp del mensaje en epoch de SEGUNDOS (string). Lo pasamos a ms.
+
+    Es la hora real en que el cliente envió el mensaje, que puede diferir bastante de
+    la hora de procesamiento si Meta reintenta el webhook.
+    """
+    try:
+        return int(raw_ts) * 1000
+    except (TypeError, ValueError):
+        return int(time.time() * 1000)
 
 
 class WhatsAppChannel(BaseChannel):
@@ -36,7 +48,7 @@ class WhatsAppChannel(BaseChannel):
             channel="whatsapp",
             user_text=text,
             user_id=wa_id,
-            timestamp=ts or datetime.now(timezone.utc).isoformat(),
+            event_ts_ms=_parse_event_ts_ms(ts),
             message_type=message_type,
             raw=raw_payload,
         )

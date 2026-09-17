@@ -13,7 +13,7 @@ class NormalizedMessage:
     channel: str
     user_text: str
     user_id: str
-    timestamp: str
+    event_ts_ms: int  # cuándo el cliente envió el mensaje (epoch en milisegundos)
     message_type: str = "text"
     raw: dict[str, Any] = field(default_factory=dict)
 

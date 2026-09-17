@@ -15,6 +15,21 @@ _TTL_SECONDS = 86400        # 24 horas (historial)
 _METADATA_TTL = 7 * 86400  # 7 días (flags de sesión)
 
 
+def _display_ts_ms(item: dict[str, Any]) -> int:
+    """Hora del turno en epoch ms, para mostrar en el inbox.
+
+    Usa el atributo `ts` (hora real del evento). Los turnos escritos antes de que
+    existiera ese atributo caen de vuelta al prefijo del `sk`, que ya venía en ms.
+    """
+    ts = item.get("ts")
+    if ts is not None:
+        return int(ts)
+    try:
+        return int(str(item.get("sk", "")).split("#")[0])
+    except (ValueError, IndexError):
+        return 0
+
+
 class ConversationStore:
     def __init__(self) -> None:
         region = os.environ.get("AWS_REGION", "us-east-1")
@@ -34,17 +49,29 @@ class ConversationStore:
         items.reverse()
         return [{"role": item["role"], "content": item["content"]} for item in items if "role" in item]
 
-    def save_turn(self, session_id: str, role: str, content: str) -> None:
-        """Persiste un turno de conversación con TTL de 24 h."""
-        now = int(time.time() * 1000)  # milisegundos para orden correcto dentro del mismo segundo
-        sk = f"{now}#{uuid.uuid4().hex}"
+    def save_turn(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        event_ts_ms: int | None = None,
+    ) -> None:
+        """Persiste un turno de conversación con TTL de 24 h.
+
+        `sk` se genera siempre con el reloj del servidor: garantiza orden de llegada y
+        unicidad. `ts` guarda la hora REAL del evento (la que reporta WhatsApp para los
+        mensajes del cliente), que es la que se muestra en el inbox. Ambos en epoch ms.
+        """
+        now_ms = int(time.time() * 1000)  # milisegundos para orden correcto dentro del mismo segundo
+        sk = f"{now_ms}#{uuid.uuid4().hex}"
         self._table.put_item(
             Item={
                 "session_id": session_id,
                 "sk": sk,
                 "role": role,
                 "content": content,
-                "expires_at": now + _TTL_SECONDS,
+                "ts": event_ts_ms if event_ts_ms is not None else now_ms,
+                "expires_at": now_ms + _TTL_SECONDS,
             }
         )
         logger.debug("Turno guardado", extra={"session_id": session_id})
@@ -110,17 +137,13 @@ class ConversationStore:
                 continue
             turns.sort(key=lambda x: x["sk"], reverse=True)
             latest = turns[0]
-            try:
-                last_activity = int(latest["sk"].split("#")[0])
-            except (ValueError, IndexError):
-                last_activity = 0
             result.append({
                 "session_id": sid,
                 "phone_number": sid.removeprefix("whatsapp_"),
                 "human_mode": data["human_mode"],
                 "last_message": latest.get("content", ""),
                 "last_message_role": latest.get("role", "user"),
-                "last_activity": last_activity,
+                "last_activity": _display_ts_ms(latest),  # epoch ms
             })
 
         result.sort(key=lambda x: x["last_activity"], reverse=True)
@@ -137,14 +160,10 @@ class ConversationStore:
         for item in items:
             if "role" not in item:
                 continue
-            try:
-                timestamp = int(item["sk"].split("#")[0])
-            except (ValueError, IndexError):
-                timestamp = 0
             result.append({
                 "sk": item["sk"],
                 "role": item["role"],
                 "content": item.get("content", ""),
-                "timestamp": timestamp,
+                "timestamp": _display_ts_ms(item),  # epoch ms
             })
         return result

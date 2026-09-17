@@ -6,7 +6,11 @@ resolve_s3 = true
 s3_prefix = "nexobot"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "Environment=\"development\" WhatsAppPhoneNumberId=\"1175305835656830\" LogLevel=\"INFO\""
+# WhatsAppPhoneNumberId 1096770373519916 = +506 6113 2863 ("nexoreal"), el número real.
+# NO usar 1175305835656830: es el "Test Number" (+1 555-643-4881) de Meta y solo puede
+# escribirle a destinatarios preregistrados.
+# OwnerWhatsAppNumber = a quién le llegan los avisos de escalación (+506 6062 8931).
+parameter_overrides = "Environment=\"development\" WhatsAppPhoneNumberId=\"1096770373519916\" LogLevel=\"INFO\" OwnerWhatsAppNumber=\"50660628931\""
 image_repositories = []
 
 [default.global.parameters]

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+import time
 from typing import Any
 
 from src.channels.base import BaseChannel, NormalizedMessage
@@ -19,7 +19,7 @@ class WebChannel(BaseChannel):
             channel="web",
             user_text=raw_payload["message"].strip(),
             user_id=user_id,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            event_ts_ms=int(time.time() * 1000),
             raw=raw_payload,
         )
 
